@@ -168,6 +168,14 @@ THE SOFTWARE.
             -->
               <j:when test="${resource.locked}">
                 ${%resource.status.locked(rootURL + '/' + resource.build.url, resource.build.fullDisplayName)}
+                <j:if test="${resource.reservedNextBy != null}">
+                  <br />
+                  ${%resource.status.reservedNextBy(resource.reservedNextBy)}
+                  <j:if test="${resource.reservedNextTimestamp != null}">
+                    <br />
+                    ${%ago(h.getTimeSpanString(resource.reservedNextTimestamp))}
+                  </j:if>
+                </j:if>
               </j:when>
             <!-- Queued by matrix-job. This will be unlock automatically (I hope)
                  Therefore use `warning`only
@@ -257,6 +265,15 @@ THE SOFTWARE.
                       tooltip="${%btn.unlock.detail}"
                     >
                       ${%btn.unlock}
+                    </button>
+                  </l:hasPermission>
+                  <l:hasPermission permission="${it.RESERVE}">
+                    <button
+                      data-action="reserveNext"
+                      class="jenkins-button jenkins-button--primary lockable-resources-action-button"
+                      tooltip="${%btn.reserveNext.detail}"
+                    >
+                      ${%btn.reserveNext}
                     </button>
                   </l:hasPermission>
                   <l:hasPermission permission="${it.STEAL}">

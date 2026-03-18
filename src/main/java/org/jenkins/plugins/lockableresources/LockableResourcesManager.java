@@ -665,6 +665,13 @@ public class LockableResourcesManager extends GlobalConfiguration {
             resource.setBuild(null);
             uncacheIfFreeing(resource, true, false);
 
+            if (resource.getReservedNextBy() != null && resource.isFree()) {
+                String reserveNextBy = resource.getReservedNextBy();
+                resource.clearReserveNext();
+                resource.reserve(reserveNextBy);
+                uncacheIfFreeing(resource, false, false);
+            }
+
             if (resource.isEphemeral()) {
                 LOGGER.fine("Remove ephemeral resource: " + resource);
                 toBeRemoved.add(resource);

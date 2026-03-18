@@ -70,6 +70,12 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     private List<String> labelsAsList = new ArrayList<>();
     private String reservedBy = null;
     private Date reservedTimestamp = null;
+    /**
+     * User who requested to reserve the resource "next" (when it becomes free from a build lock).
+     * This is independent from {@link #reservedBy} and is applied when the build unlocks the resource.
+     */
+    private String reservedNextBy = null;
+    private Date reservedNextTimestamp = null;
     private String note = "";
 
     /**
@@ -369,6 +375,21 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         return reservedBy;
     }
 
+    @Exported
+    public String getReservedNextBy() {
+        return reservedNextBy;
+    }
+
+    @Exported
+    public Date getReservedNextTimestamp() {
+        return reservedNextTimestamp == null ? null : new Date(reservedNextTimestamp.getTime());
+    }
+
+    @Exported
+    public boolean isReservedNext() {
+        return reservedNextBy != null;
+    }
+
     /** Return true when resource is free. False otherwise */
     @Exported
     public boolean isFree() {
@@ -567,6 +588,16 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
         setReservedTimestamp(new Date());
     }
 
+    public void reserveNext(String userName) {
+        this.reservedNextBy = Util.fixEmptyAndTrim(userName);
+        this.reservedNextTimestamp = (this.reservedNextBy == null) ? null : new Date();
+    }
+
+    public void clearReserveNext() {
+        this.reservedNextBy = null;
+        this.reservedNextTimestamp = null;
+    }
+
     public void unReserve() {
         this.setReservedBy(null);
         this.setReservedTimestamp(null);
@@ -575,6 +606,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
 
     public void reset() {
         this.unReserve();
+        this.clearReserveNext();
         this.unqueue();
         this.setBuild(null);
     }
@@ -590,6 +622,8 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
             setReservedTimestamp(sourceResource.getReservedTimestamp());
             setNote(sourceResource.getNote());
             setReservedBy(sourceResource.getReservedBy());
+            this.reservedNextBy = sourceResource.getReservedNextBy();
+            this.reservedNextTimestamp = sourceResource.getReservedNextTimestamp();
         }
     }
 
@@ -600,6 +634,7 @@ public class LockableResource extends AbstractDescribableImpl<LockableResource> 
     public void resetUnconfigurableProperties() {
         setReservedBy(null);
         setReservedTimestamp(null);
+        this.clearReserveNext();
         setNote("");
     }
 

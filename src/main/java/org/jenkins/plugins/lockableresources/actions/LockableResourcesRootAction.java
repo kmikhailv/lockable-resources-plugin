@@ -553,6 +553,39 @@ public class LockableResourcesRootAction implements RootAction {
 
     // ---------------------------------------------------------------------------
     @RequirePOST
+    public void doReserveNext(StaplerRequest2 req, StaplerResponse2 rsp) throws IOException, ServletException {
+        Jenkins.get().checkPermission(RESERVE);
+
+        List<LockableResource> resources = this.getResourcesFromRequest(req, rsp);
+        if (resources == null) {
+            return;
+        }
+
+        String userName = getUserName();
+        if (userName == null) {
+            // Defensive; if the permission check passed, user should be authenticated.
+            throw new AccessDeniedException3(Jenkins.getAuthentication2(), RESERVE);
+        }
+
+        LockableResource r = resources.get(0);
+
+        if (!r.isLocked()) {
+            rsp.sendError(409, "Resource is not locked; use Reserve instead.");
+            return;
+        }
+        if (r.isReserved()) {
+            rsp.sendError(409, "Resource is already reserved; cannot reserve next.");
+            return;
+        }
+
+        r.reserveNext(userName);
+        LockableResourcesManager.get().save();
+
+        rsp.forwardToPreviousPage(req);
+    }
+
+    // ---------------------------------------------------------------------------
+    @RequirePOST
     public void doSteal(StaplerRequest2 req, StaplerResponse2 rsp) throws IOException, ServletException {
         Jenkins.get().checkPermission(STEAL);
 

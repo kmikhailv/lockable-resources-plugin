@@ -23,6 +23,7 @@ import org.jenkins.plugins.lockableresources.LockableResourcesManager;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
+import org.jenkinsci.plugins.workflow.test.steps.SemaphoreStep;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -385,6 +386,44 @@ class LockableResourcesRootActionTest extends LockStepTestBase {
     // ---------------------------------------------------------------------------
     @Test
     void testDoUnreserve() {}
+
+    // ---------------------------------------------------------------------------
+    @Test
+    void testDoReserveNextLocksThenAutoReserves() throws Exception {
+        when(req.getMethod()).thenReturn("POST");
+        LockableResourcesRootAction action = new LockableResourcesRootAction();
+
+        LockableResource resource = this.createResource("resource1");
+        assertFalse(resource.isLocked(), "initially not locked");
+        assertFalse(resource.isReserved(), "initially not reserved");
+
+        WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "reserve-next-job");
+        p.setDefinition(new CpsFlowDefinition(
+                """
+                lock('resource1') {
+                    echo('locked')
+                    semaphore 'hold'
+                }
+                """,
+                true));
+
+        WorkflowRun run = p.scheduleBuild2(0).waitForStart();
+        j.waitForMessage("locked", run);
+        assertTrue(resource.isLocked(), "is locked by build");
+
+        // Request Reserve next as user with RESERVE permission
+        SecurityContextHolder.getContext().setAuthentication(this.reserve_user1.impersonate2());
+        action.doReserveNext(req, rsp);
+        assertEquals(this.reserve_user1.getId(), resource.getReservedNextBy(), "reserved-next by user");
+
+        // Finish build, which should unlock and apply reserve-next
+        SemaphoreStep.success("hold", null);
+        j.waitForCompletion(run);
+
+        assertFalse(resource.isLocked(), "unlocked after build completion");
+        assertEquals(this.reserve_user1.getId(), resource.getReservedBy(), "reserved by user after unlock");
+        assertNull(resource.getReservedNextBy(), "reserved-next cleared after applying");
+    }
 
     // ---------------------------------------------------------------------------
     @Test

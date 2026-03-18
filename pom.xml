@@ -183,7 +183,9 @@
       <plugin>
         <groupId>org.jenkins-ci.tools</groupId>
         <artifactId>maven-hpi-plugin</artifactId>
-        <configuration>
+         <version>3.55</version> 
+          <extensions>true</extensions>
+         <configuration>
           <loggers>
             <org.jenkins.plugins.lockableresources>FINE</org.jenkins.plugins.lockableresources>
           </loggers>
