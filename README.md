@@ -389,6 +389,10 @@ to
 
 ----
 
+## Build
+
+mvn -Denforcer.skip=true -Daccess-modifier-checker.skip=true -DskipTests clean package
+
 ## Changelog
 
 - See [GitHub Releases](https://github.com/jenkinsci/lockable-resources-plugin/releases)
