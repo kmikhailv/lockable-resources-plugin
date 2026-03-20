@@ -21,6 +21,10 @@ import hudson.security.PermissionGroup;
 import hudson.security.PermissionScope;
 import jakarta.servlet.ServletException;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -48,6 +52,10 @@ import org.kohsuke.stapler.interceptor.RequirePOST;
 public class LockableResourcesRootAction implements RootAction {
 
     private static final Logger LOGGER = Logger.getLogger(LockableResourcesRootAction.class.getName());
+    private static final String DEBUG_LOG_PATH =
+            "/home/koval/src/lockable-resources-plugin/.cursor/debug-02b730.log";
+    private static final String DEBUG_LOG_MIRROR_PATH = "/tmp/debug-02b730.log";
+    private static final String DEBUG_SESSION_ID = "02b730";
 
     public static final PermissionGroup PERMISSIONS_GROUP = new PermissionGroup(
             LockableResourcesManager.class, Messages._LockableResourcesRootAction_PermissionGroup());
@@ -569,6 +577,19 @@ public class LockableResourcesRootAction implements RootAction {
 
         LockableResource r = resources.get(0);
 
+        // #region agent log
+        debugLog(
+                "H1",
+                "reserveNext request",
+                "{"
+                        + "\"resource\":\"" + safe(r.getName()) + "\","
+                        + "\"user\":\"" + safe(userName) + "\","
+                        + "\"locked\":" + r.isLocked() + ","
+                        + "\"reserved\":" + r.isReserved() + ","
+                        + "\"reservedNext\":" + r.isReservedNext()
+                        + "}");
+        // #endregion
+
         if (!r.isLocked()) {
             rsp.sendError(409, "Resource is not locked; use Reserve instead.");
             return;
@@ -746,5 +767,54 @@ public class LockableResourcesRootAction implements RootAction {
         List<LockableResource> resources = new ArrayList<>();
         resources.add(r);
         return resources;
+    }
+
+    private static void debugLog(String hypothesisId, String message, String dataJson) {
+        try {
+            String line =
+                    "{"
+                            + "\"sessionId\":\""
+                            + DEBUG_SESSION_ID
+                            + "\","
+                            + "\"runId\":\"pre-fix\","
+                            + "\"hypothesisId\":\""
+                            + safe(hypothesisId)
+                            + "\","
+                            + "\"location\":\"LockableResourcesRootAction.java\","
+                            + "\"message\":\""
+                            + safe(message)
+                            + "\","
+                            + "\"data\":"
+                            + (dataJson == null ? "{}" : dataJson)
+                            + ","
+                            + "\"timestamp\":"
+                            + System.currentTimeMillis()
+                            + "}\n";
+
+            // Required debug file location for this session.
+            Files.writeString(
+                    Path.of(DEBUG_LOG_PATH),
+                    line,
+                    StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.APPEND);
+
+            // Mirror to a user-friendly location.
+            Files.writeString(
+                    Path.of(DEBUG_LOG_MIRROR_PATH),
+                    line,
+                    StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.APPEND);
+        } catch (Exception ignored) {
+            // debug logging must never affect execution
+        }
+    }
+
+    private static String safe(String s) {
+        if (s == null) {
+            return "";
+        }
+        return s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r");
     }
 }
